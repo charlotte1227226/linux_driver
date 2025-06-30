@@ -1,0 +1,1 @@
+savedcmd_/home/a0000/Desktop/linux_driver/char_demo/hello_char.mod := printf '%s\n'   hello_char.o | awk '!x[$$0]++ { print("/home/a0000/Desktop/linux_driver/char_demo/"$$0) }' > /home/a0000/Desktop/linux_driver/char_demo/hello_char.mod
