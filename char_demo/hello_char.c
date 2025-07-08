@@ -2,7 +2,7 @@
 #include <linux/module.h>
 #include <linux/fs.h>
 #include <linux/uaccess.h>
-#include <linux/string.h>    // 新增這行
+#include <linux/string.h>
 
 #define DEVICE_NAME "hello_char"
 static int major;
