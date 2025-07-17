@@ -1,3 +1,24 @@
+# 註冊流程
+```bash
+cat /proc/devices
+```
+
+所看到的「字元裝置（Character devices）」列表，意義如下：
+
+* **左欄**：主設備號（Major Number）── Linux 核心用它來區分不同的裝置驅動。
+* **右欄**：裝置名稱（Driver Name）── 對應 `/dev` 底下那些字元設備節點所屬的驅動。
+
+舉例說明：
+
+```
+ 1  mem       ← Major 1 是「mem」（/dev/mem, /dev/kmem 等）  
+ 4  tty       ← Major 4 是「tty」（傳統終端）  
+ 5  ptmx      ← Major 5 是「ptmx」（pseudo‑tty 多工器）  
+```
+
+這個檔案還會接著列出「區塊裝置（Block devices）」的 Major Number 對照表，幫你快速查到 kernel 中哪些 major 已被註冊、對應到什麼驅動。
+
+---
 # 在 Linux 核心裡如何註冊（register）和銷毀（unregister）一個字元設備。重點如下：
 
 ## 1. 函數原型
