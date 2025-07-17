@@ -150,3 +150,95 @@ sudo modprobe your_module
 ```
 
 > **提示**：若不想搬檔，就直接用 `insmod`；只要想要「自動解析依賴」，再把模組放進 `/lib/modules`、depmod 一下就行。
+
+---
+以下是將整個流程的重點整理歸納：
+
+1. **確認目前核心版本**
+
+   ```bash
+   uname -r
+   ```
+
+   > 範例輸出：`6.12.34+rpt-rpi-2712`
+
+2. **定位模組根目錄**
+   系統會在：
+
+   ```
+   /lib/modules/$(uname -r)/
+   ```
+
+   也就是：
+
+   ```
+   /lib/modules/6.12.34+rpt-rpi-2712/
+   ```
+
+3. **檢視可用的子目錄**
+
+   ```bash
+   ls /lib/modules/$(uname -r)/
+   ```
+
+   常見子目錄有：
+
+   * `kernel/`
+   * `updates/`、`extra/`
+   * `misc/`、`build/`……
+
+4. **放置自訂模組**
+   將編譯好的 `your_module.ko` 複製到合適的子目錄，例如：
+
+   ```bash
+   sudo cp your_module.ko \
+     /lib/modules/$(uname -r)/kernel/drivers/misc/
+   ```
+
+5. **更新模組依賴資訊**
+
+   ```bash
+   sudo depmod -a
+   ```
+
+   > 重新建立 `/lib/modules/…/modules.dep`，讓 `modprobe` 能夠找到你的模組。
+
+6. **載入模組**
+
+   ```bash
+   sudo modprobe your_module
+   ```
+
+7. **確認載入檔案的實際路徑**（可選）
+
+   ```bash
+   modinfo -n your_module
+   ```
+
+   會顯示類似：
+
+   ```
+   /lib/modules/6.12.34+rpt-rpi-2712/kernel/drivers/misc/your_module.ko
+   ```
+
+8. **（進階搜尋）查詢系統中所有 `.ko`**
+
+   ```bash
+   find /lib/modules/$(uname -r) -type f -name '*.ko*'
+   ```
+
+   或只找特定模組：
+
+   ```bash
+   find /lib/modules/$(uname -r) -type f -name 'your_module.ko'
+   ```
+
+---
+
+#### 小結
+
+* **路徑**：`/lib/modules/$(uname -r)/…`
+* **流程**：複製 → depmod → modprobe → （modinfo 驗證）
+* **工具**：`uname`、`ls`、`cp`、`depmod`、`modprobe`、`modinfo`、`find`
+
+有了這份歸納，後續安裝與管理自訂 kernel 模組就會更清晰！
