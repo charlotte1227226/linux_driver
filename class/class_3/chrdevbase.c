@@ -1,13 +1,61 @@
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
+#include <linux/fs.h> // make 前沒有裝 看教學打得
+
+
+#define CHRDEVBASE_MAJOR       200              // 主設備號
+#define CHRDEVBASE_NAME        "chrdevbase"     //名字
+
+static int chrdevbase_open(struct inode *inode, struct file *filp)
+{
+    printk("chrdevbase_open\r\n");
+    return 0;
+}
+
+static int chrdevbase_release(struct inode *inode, struct file *filp)
+{
+    printk("chrdevbase_release\r\n");
+    return 0;
+}
+/*release就是close*/
+
+static ssize_t chrdevbase_read(struct file *filp, __user char *buf, size_t count, loff_t *ppos)
+{
+    printk("chrdevbase_read\r\n");
+    return 0;
+}
+
+static ssize_t chrdevbase_write(struct file *filp, const char __user *buf, size_t count, loff_t *ppos)
+{
+    printk("chrdevbase_write\r\n");
+    return 0;
+}
+
+static struct file_operations chrdevbase_fops = {
+    .owner = THIS_MODULE,
+    .open = chrdevbase_open,
+    .release = chrdevbase_release,
+    .read = chrdevbase_read,
+    .write = chrdevbase_write,
+};
+/*實現設備所需的函數*/
+
+/*
+字符設備操作合集
+*/
+
 
 static int __init chrdev_init(void)
 {
+    int ret = 0;
     printk("chrdevbase_init\r\n");
 
     /*註冊字符設備*/
-    int register_chrdev(unsigned int major, const char *name, const struct file_operations *fops);
+    ret = register_chrdev(CHRDEVBASE_MAJOR, CHRDEVBASE_NAME, &chrdevbase_fops);
+    if(ret < 0){
+        printk("chrdevbase init failed!\r\n");
+    }
     return 0;
 }
 static void __exit chrdev_exit(void)
@@ -15,7 +63,7 @@ static void __exit chrdev_exit(void)
     printk("chrdevbese_exit\r\n");
 
     /*註銷字符設備*/
-    unregister_chrdev(unsigned int major, const char *name);
+    unregister_chrdev(CHRDEVBASE_MAJOR, CHRDEVBASE_NAME);
 }
 
 /*
