@@ -24,7 +24,8 @@ int main(int argc, char *argv[])
         printf("Can't open file %s \r\n", filename);
         return -1;
     }
-
+    printf("Open file %s success\r\n", filename);
+    printf("file_descriptor = %d ", file_descriptor);
     /* read */
     ret = read(file_descriptor, readbuf, 50); // 50是從驅動裡面讀50個字節
     // -1 : 錯誤，讀取錯誤
@@ -32,9 +33,11 @@ int main(int argc, char *argv[])
     // file_descriptor是你要寫的文件，readbuf是讀取到的字節存在這裡，50是讀取50個字節
     if(ret < 0){
         printf("read file %s failed!\r\n", filename);
+        return -1;
     }
     else{
-
+        printf("read file %s success\r\n", filename);
+        printf("ret = %d \r\n", ret);
     }
     
     /* write */
@@ -43,9 +46,11 @@ int main(int argc, char *argv[])
     // 沒有錯誤的話，有可能是要看一下，只能寫<50個字節(看返回值)
     if(ret < 0){
         printf("write file %s failed!\r\n", filename);
+        return -1;
     }
     else{
-
+        printf("write file %s success\r\n", filename);
+        printf("ret = %d \r\n", ret);
     }
 
     /* close */
@@ -53,9 +58,11 @@ int main(int argc, char *argv[])
     // -1 : 錯誤，關閉錯誤
     if(ret < 0){
         printf("close file %s failed!", filename);
+        return -1;
     }
     else{
-
+        printf("close file %s success\r\n", filename);
+        printf("ret = %d \r\n", ret);
     }
 
     return 0;
