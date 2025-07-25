@@ -26,15 +26,30 @@ static int chrdevbase_release(struct inode *inode, struct file *filp)
 
 static ssize_t chrdevbase_read(struct file *filp, __user char *buf, size_t count, loff_t *ppos)
 {
+    int ret = 0;
     //printk("chrdevbase_read\r\n");
+    memcpy(readbuf, kerneldata, sizeof(kerneldata)); // void * memcpy(void *dest, const void *src, size_t n);
+    ret = copy_to_user(buf, readbuf, count); // 把read_buf的資料放到buf 讀count個
+    if (ret == 0) {
 
-    copy_to_user();
+    }
+    else {
+
+    }
     return 0;
 }
 
 static ssize_t chrdevbase_write(struct file *filp, const char __user *buf, size_t count, loff_t *ppos)
 {
-    printk("chrdevbase_write\r\n");
+    //printk("chrdevbase_write\r\n");
+    int ret = 0;
+    ret = copy_from_user(writebuf, buf, count);
+    if (ret == 0) {
+        printk("kernel recevdata:%s\r\n", writebuf);
+    }
+    else {
+        
+    }
     return 0;
 }
 
