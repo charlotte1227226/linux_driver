@@ -386,3 +386,249 @@ a0000@mcalab:~/Desktop/linux_driver/class/class_5 $ dmesg | tail -n 10
 [ 3452.497672] chrdevbase_release
 a0000@mcalab:~/Desktop/linux_driver/class/class_5 $ 
 ```
+
+---
+## 補充說明
+
+`Module.symvers` 是 Linux 核心建置系統（Kbuild）在「modpost」階段所產生的一個符號版本檔，用來管理模組間的符號（symbol）匯出與版本相容性。它的意義和作用可以分成以下幾點：
+
+---
+
+## 1. 內容
+
+* 每一行代表一個「已匯出符號（exported symbol）」
+* 格式大致是：
+
+  ```
+  <symbol_name>   <CRC32_of_symbol_signature>   <origin_module_or_vmlinux>
+  ```
+
+  例如：
+
+  ```
+  copy_to_user   1a2b3c4d   vmlinux
+  printk         ab12cd34   kernel/printk.o
+  ```
+
+---
+
+## 2. 生成時機
+
+1. **編譯核心或原生模組時**
+
+   * 在 `make modules` 或 `make` 的最後階段，Kbuild 會呼叫 `scripts/mod/modpost`
+2. **modpost** 會收集：
+
+   * vmlinux（核心本身）的所有 EXPORT\_SYMBOL
+   * 以及目前樹狀下所有模組的 EXPORT\_SYMBOL
+3. **輸出 `Module.symvers`** 到核心根目錄，以及各子目錄下（若有 sub‑Makefile）
+
+---
+
+## 3. 主要用途
+
+1. **符號版本檢查（Symbol Versioning）**
+
+   * CRC32 可以保證你連結到的符號「原型／API」跟核心版本是一致的
+   * 若 external module 中用到的符號 CRC 跟 `Module.symvers` 裡不符，modpost 會警告或錯誤
+2. **跨目錄／out‑of‑tree 模組建置**
+
+   * 當你在外部資料夾（不在 kernel tree 裡）編譯自己的模組時，可用：
+
+     ```bash
+     make -C /lib/modules/$(uname -r)/build \
+         M=$PWD \
+         KBUILD_EXTRA_SYMBOLS=/path/to/Module.symvers \
+         modules
+     ```
+   * 這樣外部模組就能「看見」核心或其他模組所匯出的符號與版本資訊
+3. **避免未定義符號**
+
+   * 如果沒有 `Module.symvers`，外部模組只會搜尋 vmlinux 本身的 EXPORT\_SYMBOL，找不到就建置失敗
+   * 若有但版本不符，也會在連結階段被攔截，早於執行時崩潰
+
+---
+
+## 4. 小結架構圖
+
+```
+┌────────────────────────────┐
+│  Kernel Tree /build 目錄   │
+│                            │
+│  ┌───────────┐   ┌───────┐ │
+│  │  vmlinux  │   │ modules ├───┐
+│  └───────────┘   └───────┘ │   │
+│       │             │      │   │
+│       ▼             ▼      │   ▼
+│   scripts/mod/modpost      │  Module.symvers
+│       │                    │   ────┐
+│       ▼                    │       │
+│   收集 EXPORT_SYMBOL       │       │
+│       │                    │       │
+│       └───> 輸出 Module.symvers ──┘
+└────────────────────────────┘
+
+  ↑  
+  │
+  │ 用於 out‑of‑tree 模組建置時，透過
+  │ KBUILD_EXTRA_SYMBOLS 指定
+  │
+  ↓
+
+┌───────────────────────────┐
+│ External Module Source    │
+│  (out‑of‑tree)            │
+│  make … KBUILD_EXTRA_SYMBOLS=/…/Module.symvers │
+└───────────────────────────┘
+```
+
+**總之，`Module.symvers` 的核心意義就是維護「模組符號 + 版本」清單，讓所有模組在編譯連結階段就能正確解析並檢查版本相容性，避免執行時的符號不匹配問題。**
+
+---
+# make 跟 cmake的用途和意義和差別是什麼
+
+以下用架構化方式說明 Make 和 CMake 的用途、意義，以及它們之間的差別。
+
+---
+
+## 一、Make
+
+1. **定位**
+
+   * 傳統的「建置工具」（build tool），直接讀取 Makefile 中定義的「規則」（rule）與「相依性」（dependency），執行命令來編譯／連結程式。
+
+2. **主要特色**
+
+   * **命令式**：每個 target 都寫明「怎麼做」
+   * **相依性追蹤**：根據檔案時間戳判斷哪些檔案要重建
+   * **單一檔案格式**：Makefile
+   * **平台依賴**：多半寫死在 Unix-like 環境裡（shell 指令、gcc、ar…）
+
+3. **使用範例**
+
+   ```makefile
+   CC = gcc
+   CFLAGS = -Wall -g
+
+   all: app
+
+   app: main.o util.o
+       $(CC) $(CFLAGS) -o $@ $^
+
+   %.o: %.c
+       $(CC) $(CFLAGS) -c $<
+
+   clean:
+       rm -f *.o app
+   ```
+
+   * 執行 `make` 就會依相依性自動編譯、連結。
+
+---
+
+## 二、CMake
+
+1. **定位**
+
+   * 「跨平台建置系統產生器」（meta build system generator），透過一套高階指令（CMakeLists.txt），自動產生對應平台的 Makefile、Ninja file、或 Visual Studio solution。
+
+2. **主要特色**
+
+   * **宣告式／高階**：用 `add_executable()`、`target_link_libraries()` 等指令描述「要做什麼」，不必管底層怎麼呼叫編譯器。
+   * **跨平台**：同一份 CMakeLists.txt 可在 Linux、macOS、Windows、嵌入式交叉編譯環境… 輕鬆重用。
+   * **支援 out‑of‑source build**：可把建置檔案都放在專案外的建置目錄，提高原始碼目錄整潔度。
+   * **豐富功能**：自動尋找第三方函式庫（FindPackage）、產生安裝規則（install）、產生測試規則（CTest）等。
+
+3. **使用範例**
+
+   ```cmake
+   cmake_minimum_required(VERSION 3.10)
+   project(MyApp C)
+
+   set(CMAKE_C_STANDARD 11)
+   set(CMAKE_C_FLAGS_DEBUG "-g -Wall")
+
+   add_executable(app main.c util.c)
+   target_include_directories(app PRIVATE ${CMAKE_SOURCE_DIR}/include)
+   ```
+
+   * 在專案根目錄執行：
+
+     ```bash
+     mkdir build && cd build
+     cmake ..        # 生成 Makefile 或 Ninja 檔
+     make            # 或 ninja，進行實際建置
+     ```
+
+---
+
+## 三、主要差別
+
+| 特性        | Make                        | CMake                         |
+| --------- | --------------------------- | ----------------------------- |
+| **角色**    | 直接執行建置命令的工具                 | 產生平台原生建置腳本（Makefile/Ninja/VS） |
+| **檔案格式**  | Makefile                    | CMakeLists.txt                |
+| **指令風格**  | 命令式（shell script）           | 宣告式（高階指令）                     |
+| **跨平台能力** | 需手動改寫不同 OS/編譯器參數            | 同一份 CMakeLists.txt 支援多平台      |
+| **相依性管理** | 透過檔案時間戳與顯式規則                | 先產生再由底層建置工具（Make/Ninja）處理     |
+| **建置目錄**  | 通常 in‑source（建置檔與原始碼混放）     | 支援 out‑of‑source（建置檔與原始碼分離）   |
+| **擴充生態**  | 限於 shell / 自定義 Makefile 函式庫 | 丰富模組：FindXYZ、CTest、CPack 安裝套件 |
+
+---
+
+### 四、何時選用？
+
+* **小型／單平台專案**：
+
+  * 只有幾個源檔、目標環境固定，用 Make 直接、簡單即可。
+* **大型／多平台專案**：
+
+  * 涉及多平台／多編譯器、第三方函式庫、測試與安裝，CMake 能極大減少跨平台維護成本。
+
+---
+
+**總結**：
+
+* **Make** 是「舊牌但靈活」的直接建置工具，適合簡潔、精細控制的場景；
+* **CMake** 是「跨平台的產生器」，用更高階的宣告式語法描述建置流程，能自動化產生符合不同環境需求的原生建置腳本。
+
+---
+## `cmake ..` 意思
+「..」在 Unix/Linux 的檔案路徑中就是「父目錄」（parent directory）的縮寫。
+
+假設你的專案目錄結構如下：
+
+```
+my_project/
+├── CMakeLists.txt      ← 這裡放的是你的 CMake 腳本
+├── src/
+└── build/              ← 建置輸出目錄（還沒生成任何檔案）
+```
+
+當你在終端機依序執行：
+
+```bash
+mkdir build
+cd build
+cmake ..
+```
+
+1. **`mkdir build`**
+   在專案根目錄下建立一個叫 `build` 的子目錄。
+2. **`cd build`**
+   切換到這個新建立的 `build` 目錄。
+3. **`cmake ..`**
+
+   * `..` 就是告訴 CMake：「我的 CMakeLists.txt 和原始程式碼都在當前目錄（`build`）的上層，也就是 `build` 這個資料夾的外面。」
+   * CMake 會到父目錄（`my_project/`）去讀取 `CMakeLists.txt`，再在你現在的 `build/` 裡面寫入生成的 Makefile（或 Ninja 設定檔）、編譯中間檔、設定檔等等。
+   * 這種「**out‑of‑source build**」（原始碼與建置檔分離）的方式，有助於讓你的原始碼資料夾保持乾淨，並且可以同時為同一份原始碼／CMakeLists.txt 做多組不同的建置（例如 debug／release）。
+
+換句話說，**`cmake ..`** = “在這個目錄（`build/`）裡請 CMake 根據 `build` 的上層目錄（`..`）的 CMakeLists.txt 幫我產生原生的建置系統檔案”。
+
+你也可以把 `..` 換成任何含有 CMakeLists.txt 的路徑，例如：
+
+```bash
+cmake /home/a0000/Desktop/my_project
+```
+
+但習慣上用相對路徑 `..` 最簡潔。
