@@ -3,10 +3,15 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <unistd.h>
+#include <stdlib.h>
+//使用 man 2 read open read write...等等去察看那些函數所需要什麼庫，然後加上去
+#include <string.h>
 /*
 * argc: 應用程序參數個數
 * argv[]: 具體的參數內容，字串陣列形式
-* ./chrdevbaseAPP <filename>
+* sudo ./chrdevbaseAPP <filename> <1:2> 1表示讀，2表示寫
+* sudo ./chrdevbaseAPP /dev/chrdevbase 1    表示從驅動裡面讀取數據
+* sudo ./chrdevbaseAPP /dev/chrdevbase 2    表示向驅動裡面寫數據
 * argv[0] = ./chrdevbaseAPP, argv[1] = filename
 */
 int main(int argc, char *argv[])
@@ -14,8 +19,14 @@ int main(int argc, char *argv[])
     int ret = 0;
     int file_descriptor = 0; // 用open打開一個文件的時候要有一個標記，那個標記就是file_descriptor
     char *filename;
-    char readbuf[100], writebuf[100];
+    char user_readbuf[100], user_writebuf[100];
+    static char userdata[] = {"user data!"};
 
+    if(argc != 3) { //sudo不算一個參數，只是變成root權限去執行此程式
+        printf("Error usage! argc = %d\r\n", argc);
+        return -1;
+    }
+    printf("Correct usage! argc = %d\r\n", argc);
     filename = argv[1];
 
     file_descriptor = open(filename, O_RDWR); // O_RDONLY:只能讀，O_WRONLY:只能寫，O_RDWR:讀寫皆可
@@ -25,34 +36,40 @@ int main(int argc, char *argv[])
         return -1;
     }
     printf("Open file %s success\r\n", filename);
-    printf("file_descriptor = %d ", file_descriptor);
-    /* read */
-    ret = read(file_descriptor, readbuf, 50); // 50是從驅動裡面讀50個字節
-    // -1 : 錯誤，讀取錯誤
-    // 沒有錯誤的話，有可能是要看一下，返回值跟50不同
-    // file_descriptor是你要寫的文件，readbuf是讀取到的字節存在這裡，50是讀取50個字節
-    if(ret < 0){
-        printf("read file %s failed!\r\n", filename);
-        return -1;
-    }
-    else{
-        printf("read file %s success\r\n", filename);
-        printf("ret = %d \r\n", ret);
-    }
-    
-    /* write */
-    ret = write(file_descriptor, writebuf, 50);
-    // -1 : 錯誤，寫入錯誤
-    // 沒有錯誤的話，有可能是要看一下，只能寫<50個字節(看返回值)
-    if(ret < 0){
-        printf("write file %s failed!\r\n", filename);
-        return -1;
-    }
-    else{
-        printf("write file %s success\r\n", filename);
-        printf("ret = %d \r\n", ret);
-    }
+    printf("file_descriptor = %d \r\n", file_descriptor);
 
+    if(atoi(argv[2]) == 1){// 讀取
+        /* read */
+        ret = read(file_descriptor, user_readbuf, 50); // 50是從驅動裡面讀50個字節
+        // -1 : 錯誤，讀取錯誤
+        // 沒有錯誤的話，有可能是要看一下，返回值跟50不同
+        // file_descriptor是你要寫的文件，user_readbuf是讀取到的字節存在這裡，50是讀取50個字節
+        if(ret < 0){
+            printf("read file %s failed!\r\n", filename);
+            return -1;
+        }
+        else{
+            printf("read file %s success\r\n", filename);
+            printf("ret = %d \r\n", ret);
+            printf("APP read data: %s \r\n", user_readbuf);
+        }
+
+    }
+    if(atoi(argv[2]) == 2){// 寫入
+        memcpy(user_writebuf, userdata, sizeof(userdata));
+        /* write */
+        ret = write(file_descriptor, user_writebuf, 50);
+        // -1 : 錯誤，寫入錯誤
+        // 沒有錯誤的話，有可能是要看一下，只能寫<50個字節(看返回值)
+        if(ret < 0){
+            printf("write file %s failed!\r\n", filename);
+            return -1;
+        }
+        else{
+            printf("write file %s success\r\n", filename);
+            printf("ret = %d \r\n", ret);
+        }
+    }
     /* close */
     ret = close(file_descriptor);
     // -1 : 錯誤，關閉錯誤

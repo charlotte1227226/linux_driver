@@ -1,0 +1,1 @@
+savedcmd_/home/a0000/Desktop/linux_driver/class/class_5/chrdevbase.mod := printf '%s\n'   chrdevbase.o | awk '!x[$$0]++ { print("/home/a0000/Desktop/linux_driver/class/class_5/"$$0) }' > /home/a0000/Desktop/linux_driver/class/class_5/chrdevbase.mod

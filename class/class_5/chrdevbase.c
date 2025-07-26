@@ -2,7 +2,7 @@
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/fs.h> // make 前沒有裝 看教學打得
-
+#include <linux/uaccess.h>
 
 #define CHRDEVBASE_MAJOR       200              // 主設備號
 #define CHRDEVBASE_NAME        "chrdevbase"     //名字
