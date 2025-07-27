@@ -3,7 +3,7 @@ KERNELDIR := /lib/modules/6.12.25+rpt-rpi-2712/build
 # 當前路徑
 CURRENT_PATH := $(shell pwd)
 # 要編譯的文件
-obj-m := led.o
+obj-m := rpi_led.o
 # 表示我們編譯的是模塊
 build: kernel_modules
 
