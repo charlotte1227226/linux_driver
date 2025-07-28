@@ -9,7 +9,10 @@
     - 如果指定主設備號的話，那麼使用`register_chrdev_region`，函數原型是:
     - `int register_chrdev_region(dev_t from, unsigned int count, const char *name);`
     - 一般是給定主設備號，然後使用MKDEV構建完整的 `dev_t`，一般次設備號選擇 0 。
-
+5. 實際的驅動編寫
+    - 考慮要完善:兩種情況
+    - 給定主設備號
+    - 沒有給定主設備號
 
 ---
 ## 補充說明
@@ -56,6 +59,40 @@ if (ret < 0) {
 
 ---
 ```c
+int register_chrdev_region(dev_t from, unsigned int count, const char *name);
+```
+這三個參數的意義如下：
+
+1. **`dev_t from`**
+
+   * 起始設備號（`dev_t` 型別），包含了你想要註冊的主設備號和次設備號。
+   * 通常用 `MKDEV(major, minor)` 來構造，例如 `MKDEV(240, 0)` 就表示主號 240、次號從 0 開始。
+
+2. **`unsigned int count`**
+
+   * 要註冊的連續設備號個數。
+   * 如果你的驅動只有一個設備，填 `1`；如果像 `/dev/foo0`、`/dev/foo1`… 多個設備，就填設備的總數。
+
+3. **`const char *name`**
+
+   * 在核心的 `/proc/devices`（以及使用者空間工具如 `udev`）中顯示的驅動名稱，用來標識這段號碼。
+   * 通常填你的設備或驅動名稱字串，例如 `"mychardev"`。
+
+---
+
+**使用範例**：
+
+```c
+dev_t dev = MKDEV(240, 0);    /* 從 major=240, minor=0 開始 */
+int ret = register_chrdev_region(dev, 1, "mychardev");
+if (ret < 0) {
+    printk("register_chrdev_region 失敗: %d\n", ret);
+}
+```
+
+
+---
+```c
 void unregister_chrdev_region(dev_t dev, unsigned int count);
 ```
 
@@ -71,3 +108,77 @@ static void __exit mydrv_exit(void)
     unregister_chrdev_region(dev, 1);
 }
 ```
+
+---
+## 新的字符設備驅動 API 下，如何釋放／申請主次設備號，並給出了一個示例代碼及每一行的註解：
+
+---
+
+1. **釋放設備號**
+   不管之前是用 `alloc_chrdev_region` 還是 `register_chrdev_region` 申請的設備號，統一在卸載時呼叫：
+
+   ```c
+   void unregister_chrdev_region(dev_t from, unsigned count);
+   ```
+
+   釋放從 `from` 開始、共 `count` 個連續號。
+
+2. **新 API 下的設備號分配示例**
+
+   ```c
+   int major;      /* 主設備號 */
+   int minor;      /* 次設備號 */
+   dev_t devid;    /* 組合後的設備號 */
+
+   if (major) {    /* 如果事先指定了 major */
+       devid = MKDEV(major, 0);                  /* 用 major + minor(0) 構建 dev_t */
+       register_chrdev_region(devid, 1, "test");/* 註冊這個設備號 */
+   } else {        /* 沒有指定 major，要動態分配 */
+       alloc_chrdev_region(&devid, 0, 1, "test");/* 申請一個設備號 */
+       major = MAJOR(devid);                    /* 取出分配到的主號 */
+       minor = MINOR(devid);                    /* 取出分配到的從號 */
+   }
+   ```
+
+3. **每行註解重點**
+
+   * 第 1–3 行，宣告 `major`、`minor` 和 `dev_t devid`。
+   * 第 5 行，檢查 `major` 是否有效（大多數驅動若事先指定主號，就約定從號選 0）。
+   * 第 6 行，若 `major` 有效，就用 `MKDEV(major,0)` 生成設備號。
+   * 第 7 行，呼叫 `register_chrdev_region` 註冊這個號碼。
+   * 第 9 行，若 `major` 無效，就呼叫 `alloc_chrdev_region` 動態申請。
+   * 第 10–11 行，用 `MAJOR()` / `MINOR()` 宏從申請結果中取得主／從號。
+
+---
+
+整體流程就是：
+
+1. 如果你想固定用某個 major，就先填 `major`，再用 `register_chrdev_region`；
+2. 否則不填 `major`，直接用 `alloc_chrdev_region` 拿一組號，然後用 `MAJOR()`、`MINOR()` 取回。
+
+---
+## MKDEV
+`MKDEV` 是 Linux 核心提供的一個巨集（macro），用來把「主設備號（major）」和「次設備號（minor）」合併成一個 `dev_t` 型別的整數值。它的原型大致是：
+
+```c
+/* 在 include/linux/kdev_t.h 中定義 */
+#define MKDEV(major, minor)  \
+    (((dev_t)(major) << MINORBITS) | ((dev_t)(minor) & MINORMASK))
+```
+
+* **參數**
+
+  * `major`：主設備號（高位元負責辨識驅動或設備類別）
+  * `minor`：次設備號（低位元可用來區分同一類別下的不同設備）
+* **回傳值**
+
+  * 一個 `dev_t` 整數，內部先將 `major` 左移 `MINORBITS` 位元（預留給 minor 的位數），再將 `minor` 與遮罩取並（`& MINORMASK`），兩者相加就得到完整的設備編號。
+
+之後若要從這個 `dev_t` 取回原本的 major/minor，就可以分別用：
+
+```c
+MAJOR(dev_t dev);  /* 取出高位的主設備號 */
+MINOR(dev_t dev);  /* 取出低位的次設備號 */
+```
+
+這樣就能在程式中輕鬆地組裝與拆解 Linux 字符或區塊設備所需的編號格式。
