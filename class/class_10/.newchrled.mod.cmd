@@ -1,1 +1,0 @@
-savedcmd_/home/a0000/Desktop/linux_driver/class/class_10/newchrled.mod := printf '%s\n'   newchrled.o | awk '!x[$$0]++ { print("/home/a0000/Desktop/linux_driver/class/class_10/"$$0) }' > /home/a0000/Desktop/linux_driver/class/class_10/newchrled.mod

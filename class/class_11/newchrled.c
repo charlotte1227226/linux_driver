@@ -7,6 +7,7 @@
 #include <linux/io.h>
 #include <linux/delay.h>
 #include <linux/types.h>
+#include <linux/device.h>
 
 #define NEWCHRLED_NAME "newchrled"
 #define NEWCHRLED_COUNT 1
@@ -16,10 +17,12 @@
 
 /*LED 設備結構體*/
 struct newchrled_dev{
-    struct cdev cdev;   //字符設備
-    dev_t devid;        //設備號
-    int major;          //次設備號
-    int minor;          //次設備號
+    struct cdev cdev;       //字符設備
+    dev_t devid;            //設備號
+    struct class *class;    //類別
+    struct device *device;  //設備
+    int major;              //次設備號
+    int minor;              //次設備號
 
 };
 
@@ -75,7 +78,21 @@ static int __init newchrled_init(void)
     ret = cdev_add(&newchrled.cdev, newchrled.devid, NEWCHRLED_COUNT);
 
     /*3. 自動創建設備節點*/
-
+    /*新增類別*/
+    // newchrled.class = class_create(THIS_MODULE, NEWCHRLED_NAME);
+    newchrled.class = class_create(NEWCHRLED_NAME); 
+    //編譯時struct class * __must_check class_create(const char *name);
+    //傳一個參數就好
+    if (IS_ERR(newchrled.class)) 
+    {
+        return PTR_ERR(newchrled.class);
+    }
+    /*新增設備*/
+    newchrled.device = device_create(newchrled.class, NULL, newchrled.devid, NULL, NEWCHRLED_NAME);
+    if (IS_ERR(newchrled.device)) 
+    {
+        return PTR_ERR(newchrled.device);
+    }
     return 0;
 }
 /*出口*/
@@ -86,6 +103,12 @@ static void __exit newchrled_exit(void)
     cdev_del(&newchrled.cdev);
     /*註銷字符設備*/
     unregister_chrdev_region(newchrled.devid, NEWCHRLED_COUNT);
+    /*刪除設備節點*/
+    /*摧毀設備*/
+    device_destroy(newchrled.class, newchrled.devid);
+    /*摧毀類別*/
+    class_destroy(newchrled.class);
+    
 }
 
 
