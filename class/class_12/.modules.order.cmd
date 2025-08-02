@@ -1,0 +1,1 @@
+savedcmd_/home/a0000/Desktop/linux_driver/class/class_12/modules.order := {   echo /home/a0000/Desktop/linux_driver/class/class_12/newchrled.o; :; } > /home/a0000/Desktop/linux_driver/class/class_12/modules.order
