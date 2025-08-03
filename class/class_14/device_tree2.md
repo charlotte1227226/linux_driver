@@ -23,7 +23,7 @@
     ```bash
     make dtbs
     ```
-# 3. 
+# 3. DTS 語法
 
 
 
