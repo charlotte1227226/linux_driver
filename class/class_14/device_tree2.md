@@ -1442,3 +1442,46 @@ Linux Kernel → 解壓 → 解析 DT → 驅動初始化 → 掛載根 FS
 Init → 啟動服務 → 使用者空間
 ```
 
+# **Device Tree** 的結構「畫出來」，重點是想表達下面幾層的關係：
+
+```
+(ALPHA)       ←─── 你的 SoC（System on Chip）節點，用一個 label 叫做 ALPHA
+  ├─ cpu          ←─── CPU 節點（哪顆核心、頻率等等）
+  ├─ clocks       ←─── clock-controller 節點（時鐘源設定）
+  └─ bus-tree     ←─── 定義所有匯流排／總線的 container
+       ├─ i2c1    ←─── 第一組 I²C 控制器
+       ├─ i2c2    ←─── 第二組 I²C 控制器
+       └─ …       ←─── 其他 bus (SPI、UART、…)
+```
+
+然後圖右邊那個大括號包住的 `mag3110`，箭頭指向 `i2c1`，就是在示意：
+
+> **「這顆 MAG3110（三軸電子羅盤）感測器是接在 i2c1 這條匯流排底下的子節點」**
+
+換句話說，把我們剛剛在 DTS 裡
+
+```dts
+&i2c1 {
+    …                /* i2c1 bus 的設定 */
+    mag3110@0e {     /* i2c1 bus 底下的子節點：address = 0x0e */
+        compatible = "fsl,mag3110";
+        reg        = <0x0e>;
+    };
+};
+```
+
+用一張樹狀結構圖畫出來而已。
+
+---
+
+### 重點回顧
+
+1. **最頂層**（ALPHA）代表你的 SoC 或 root node。
+2. **cpu / clocks** 屬於 SoC 內建硬體資源。
+3. **bus-tree**（simple-bus）是個「容器節點」，把所有匯流排都放在一起。
+4. **i2c1 / i2c2 …** 都是 bus-tree 底下的節點，各自對應一組 I²C 控制器。
+5. **mag3110\@0e** 則是掛在 i2c1 底下的子節點，代表這顆感測器的 I²C 位址是 0x0E。
+
+這樣的圖就是把 DTS 的文字結構，轉成一目了然的層級示意圖，幫助理解整個硬體拓樸（topology）與 device tree 的對應關係。
+
+
