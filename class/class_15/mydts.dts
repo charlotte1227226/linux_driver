@@ -1,0 +1,33 @@
+/dts-v1/;
+
+#include .h
+#include .dtsi
+
+/{
+    model = "xxxxx";    //屬性
+    compatible = "cccccc", "aaaaaaa";   //屬性
+
+    //子節點
+    chosen {
+        stdout-path = &uart1;   //屬性
+    };
+
+    memory {
+
+    };
+
+    reserved-memory {
+
+    };
+
+    backlight {
+
+    };
+
+};
+/* / :為根結點
+*
+*
+*
+*
+*/
