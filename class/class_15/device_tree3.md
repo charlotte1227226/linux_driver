@@ -28,6 +28,15 @@
 2. DTS也是 `/`(根) 開始。
 3. 從`/`根節點開始描述設備訊息
 4. 在`/`根節點外有一些`&cpu`這樣的語句是**追加**
+5. 節點名字，完整的要求(通常是小寫)
+    - `node-name@unit-address`
+    - unit-address 一般都是外設暫存器的起始地址，有時候是i2c的設備地址，或者其他含意、具體節點分析。
+    設備樹裡面常常遇到如下所示節點名字:
+    - `intc: interrupt-controller@00a00`
+    - `標籤: 名字`: 用途是不用打一長串，用標籤就可以了
+
+---
+![alt text](image-1.png)
 
 ---
 ![alt text](image.png)
@@ -98,3 +107,52 @@
 * **第一行** 定義版本
 * **第二段** （可選）定義要保留給特殊用途的記憶體範圍
 * **最後一大塊** 定義整顆板子的硬體結構（屬性＋子節點）
+
+---
+![alt text](image-2.png)
+
+---
+簡單說：**`&` 在 Device Tree（DTS）裡是「phandle 參照」運算子**，用來**指到已經定義好的節點**（很像 C 裡“指標到某節點”，但不是位址運算子）。
+
+### 你圖裡的三種用法
+
+1. **打開/覆寫既有節點**
+
+```dts
+&csi {
+    status = "okay";
+};
+```
+
+意思：找到先前有標籤 `csi:` 的節點，打開它並把 `status` 改成 `"okay"`。
+
+2. **在屬性值裡參照別的節點（phandle + 參數）**
+
+```dts
+&clks {
+    assigned-clocks = <&clks IMX6UL_CLK_PLL4_AUDIO_DIV>;
+    assigned-clock-rates = <786432000>;
+};
+```
+
+`<&clks …>` 裡的第一個欄位是 **phandle**（指到 `clks:` 這個 clock 控制器節點）；後面跟著此 provider 定義的 **specifier**（例如 clock ID，數量由該節點的 `#clock-cells` 決定）。
+
+3. **為裝置指定供電來源（也是 phandle 參照）**
+
+```dts
+&cpu0 {
+    arm-supply = <&reg_arm>;
+    soc-supply = <&reg_soc>;
+    dc-supply  = <&reg_gpio_dvfs>;
+};
+```
+
+每個 `*-supply` 指向對應的 regulator 節點（`reg_arm:`, `reg_soc:` …）。
+
+### 重點備註
+
+* 被參照的節點必須**有標籤**（例如 `clks: clock-controller@... { ... };`），才能用 `&clks` 指到它。
+* 也可用路徑參照（常見於 overlay）：`&{/soc/i2c@021a0000}`。
+* `&` **不是** C 的取位址；它只是在 DTS 語法裡請 dtc 把該參照解析成 32-bit phandle 值。
+
+
