@@ -1,0 +1,18 @@
+/dts-v1/;
+/plugin/;
+
+ /{
+	compatible = "brcm,bcm2712";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			dtsled0: dtsled@0 {
+				compatible = "mcalab,newchrled";
+				status = "okay";
+				label = "myled";
+				led-gpios = <&gpio 26 0>;  /* 0 == GPIO_ACTIVE_HIGH */
+			};
+		};
+	};
+};
