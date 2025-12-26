@@ -1,1 +1,0 @@
-savedcmd_/home/a0000/Desktop/linux_driver/class/class_20/dtsled.mod := printf '%s\n'   dtsled.o | awk '!x[$$0]++ { print("/home/a0000/Desktop/linux_driver/class/class_20/"$$0) }' > /home/a0000/Desktop/linux_driver/class/class_20/dtsled.mod
